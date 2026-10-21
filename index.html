@@ -24,7 +24,7 @@
     <div class="chat-area">
         <div class="message-log" id="messageLog">Welcome to the school-safe chat! Type a message below.</div>
         <div class="input-area">
-            <form id="chatForm">
+            <form id="chatForm" onsubmit="return false;">
                 <div class="input-wrapper">
                     <input type="text" id="msgInput" placeholder="Message #general" autocomplete="off" required>
                 </div>
@@ -35,12 +35,17 @@
     <!-- Include Pusher Library -->
     <script src="https://pusher.com"></script>
     <script>
-        // 1. FILL IN YOUR PUSHER INFO HERE (Keep the quotation marks):
+        // Your real configurations are loaded here:
         const PUSHER_APP_KEY = "b2d208fdbcd5fb21592d";
-        const PUSHER_CLUSTER = "us2";
+        const PUSHER_CLUSTER = "us2"; 
 
-        const nickname = prompt("Enter your chat username:") || "Anonymous";
-        const avatarColor = '#' + Math.floor(Math.random()*16777215).toString(16);
+        let nickname = "";
+        let avatarColor = '#' + Math.floor(Math.random()*16777215).toString(16);
+
+        // Ask for nickname once when page opens
+        window.onload = function() {
+            nickname = prompt("Enter your chat username:") || "Anonymous";
+        };
 
         const messageLog = document.getElementById('messageLog');
         const chatForm = document.getElementById('chatForm');
@@ -50,10 +55,9 @@
         const pusher = new Pusher(PUSHER_APP_KEY, {
             cluster: PUSHER_CLUSTER,
             forceTLS: true,
-            userAuthentication: { endpoint: null } // Disables server-side login check for client events
+            userAuthentication: { endpoint: null } 
         });
 
-        // Channel name MUST start with "private-" for client events to work without a backend server
         const channel = pusher.subscribe('private-school-chat');
 
         // Listen for new messages coming from your friends
@@ -76,9 +80,10 @@
 
         // Send a message over Pusher
         chatForm.addEventListener('submit', function(e) {
-            e.preventDefault();
+            e.preventDefault(); // COMPLETELY STOPS THE PAGE RELOAD
+            
             const textValue = msgInput.value.trim();
-            if(!textValue) return;
+            if(!textValue) return false;
 
             msgInput.value = ""; // Clear box immediately
             const timeString = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
@@ -107,8 +112,10 @@
                 </div>
             `;
             messageLog.scrollTop = messageLog.scrollHeight;
+            return false;
         });
     </script>
 </body>
 </html>
+
 
