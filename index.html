@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Discord Chat</title>
+    <style>
+        body {
+            background-color: #1e1f22;
+            color: #dbdee1;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .chat-area {
+            background-color: #313338;
+            width: 100%;
+            max-width: 600px;
+            height: 80vh;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+        .message-log {
+            flex-grow: 1;
+            padding: 16px;
+            overflow-y: auto;
+        }
+        .message-row {
+            display: flex;
+            margin-bottom: 16px;
+            animation: fadeIn 0.2s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            margin-right: 16px;
+            background-color: #5865f2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            flex-shrink: 0;
+        }
+        .message-content {
+            display: flex;
+            flex-direction: column;
+        }
+        .username {
+            font-weight: 600;
+            font-size: 1rem;
+            color: #f2f3f5;
+            margin-bottom: 4px;
+        }
+        .timestamp {
+            font-size: 0.75rem;
+            color: #949ba4;
+            margin-left: 8px;
+            font-weight: normal;
+        }
+        .text {
+            font-size: 0.95rem;
+            line-height: 1.35;
+            color: #dbdee1;
+            word-break: break-word;
+        }
+        .input-area {
+            padding: 16px;
+            background-color: #313338;
+        }
+        .input-wrapper {
+            background-color: #383a40;
+            border-radius: 8px;
+            display: flex;
+            padding: 10px 16px;
+        }
+        .input-wrapper input {
+            background: transparent;
+            border: none;
+            color: #dbdee1;
+            font-size: 0.95rem;
+            width: 100%;
+            outline: none;
+        }
+        .input-wrapper input::placeholder {
+            color: #6d737d;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="chat-area">
+        <!-- Messages will load here dynamically -->
+        <div class="message-log" id="messageLog"></div>
+
+        <!-- Input Box -->
+        <div class="input-area">
+            <form id="chatForm">
+                <div class="input-wrapper">
+                    <input type="text" id="msgInput" placeholder="Message #general" autocomplete="off" required>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Firebase SDK Scripts -->
+    <script type="module">
+        import { initializeApp } from "https://gstatic.com";
+        import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp } from "https://gstatic.com";
+
+        // 1. Paste your Firebase Config object below:
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT_://firebaseapp.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT_://appspot.com",
+            messagingSenderId: "YOUR_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const messagesRef = collection(db, "messages");
+
+        // Ask user for a nickname when they join
+        const nickname = prompt("Enter your chat username:") || "Anonymous";
+        const avatarColor = '#' + Math.floor(Math.random()*16777215).toString(16); // Random avatar color
+
+        const messageLog = document.getElementById('messageLog');
+        const chatForm = document.getElementById('chatForm');
+        const msgInput = document.getElementById('msgInput');
+
+        // 2. Listen to Live Messages from Database
+        const q = query(messagesRef, orderBy("createdAt", "asc"));
+        onSnapshot(q, (snapshot) => {
+            messageLog.innerHTML = ""; // Clear log to re-render
+            snapshot.forEach((doc) => {
+                const data = doc.data();
+                
+                // Format Timestamp safely
+                let timeString = "Just now";
+                if(data.createdAt) {
+                    timeString = new Date(data.createdAt.seconds * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                }
+
+                // Append Message HTML
+                messageLog.innerHTML += `
+                    <div class="message-row">
+                        <div class="avatar" style="background-color: ${data.color || '#5865f2'}">${data.user.charAt(0).toUpperCase()}</div>
+                        <div class="message-content">
+                            <div class="username">${data.user} <span class="timestamp">${timeString}</span></div>
+                            <div class="text">${data.text}</div>
+                        </div>
+                    </div>
+                `;
+            });
+            // Auto-scroll to the bottom
+            messageLog.scrollTop = messageLog.scrollHeight;
+        });
+
+        // 3. Send Message on Form Submit
+        chatForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const textValue = msgInput.value.trim();
+            if(!textValue) return;
+
+            msgInput.value = ""; // Clear input immediately
+
+            await addDoc(messagesRef, {
+                user: nickname,
+                text: textValue,
+                color: avatarColor,
+                createdAt: serverTimestamp()
+            });
+        });
+    </script>
+</body>
+</html>
