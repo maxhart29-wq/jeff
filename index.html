@@ -35,7 +35,7 @@
     <!-- Include Pusher Library -->
     <script src="https://pusher.com"></script>
     <script>
-        // 1. FILL IN YOUR PUSHER INFO HERE:
+        // 1. FILL IN YOUR PUSHER INFO HERE (Keep the quotation marks):
         const PUSHER_APP_KEY = "b2d208fdbcd5fb21592d";
         const PUSHER_CLUSTER = "us2";
 
@@ -49,15 +49,15 @@
         // Initialize Pusher Client
         const pusher = new Pusher(PUSHER_APP_KEY, {
             cluster: PUSHER_CLUSTER,
-            forceTLS: true
+            forceTLS: true,
+            userAuthentication: { endpoint: null } // Disables server-side login check for client events
         });
 
-        // Subscribe to a chat room channel
-        const channel = pusher.subscribe('school-chat-channel');
+        // Channel name MUST start with "private-" for client events to work without a backend server
+        const channel = pusher.subscribe('private-school-chat');
 
-        // Listen for new messages bouncing back
-        channel.bind('new-message', function(data) {
-            // Delete welcome placeholder on first message
+        // Listen for new messages coming from your friends
+        channel.bind('client-new-message', function(data) {
             if(messageLog.innerHTML.includes("Welcome to the school-safe chat")) {
                 messageLog.innerHTML = "";
             }
@@ -74,22 +74,39 @@
             messageLog.scrollTop = messageLog.scrollHeight;
         });
 
-        // Send a message over Pusher via client events
+        // Send a message over Pusher
         chatForm.addEventListener('submit', function(e) {
             e.preventDefault();
             const textValue = msgInput.value.trim();
             if(!textValue) return;
 
-            msgInput.value = ""; // Clear box
+            msgInput.value = ""; // Clear box immediately
             const timeString = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
 
-            // Send message out to everyone connected
-            channel.trigger('client-new-message', {
+            const myMessage = {
                 user: nickname,
                 text: textValue,
                 color: avatarColor,
                 time: timeString
-            });
+            };
+
+            // 1. Send it out to everyone else
+            channel.trigger('client-new-message', myMessage);
+
+            // 2. Add it to your own screen immediately
+            if(messageLog.innerHTML.includes("Welcome to the school-safe chat")) {
+                messageLog.innerHTML = "";
+            }
+            messageLog.innerHTML += `
+                <div class="message-row">
+                    <div class="avatar" style="background-color: ${myMessage.color}">${myMessage.user.charAt(0).toUpperCase()}</div>
+                    <div class="message-content">
+                        <div class="username">${myMessage.user} <span class="timestamp">${myMessage.time}</span></div>
+                        <div class="text">${myMessage.text}</div>
+                    </div>
+                </div>
+            `;
+            messageLog.scrollTop = messageLog.scrollHeight;
         });
     </script>
 </body>
